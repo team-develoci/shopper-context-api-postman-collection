@@ -1,0 +1,458 @@
+{
+	"info": {
+		"_postman_id": "f39d93b9-b4c3-4160-be9e-f913fe7985ca",
+		"name": "ShopperContext API - Develoci",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12637256"
+	},
+	"item": [
+		{
+			"name": "1a. SLAS Guest Auth",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 303\", function () {\r",
+							"    pm.response.to.have.status(303);\r",
+							"});\r",
+							"\r",
+							"console.log(pm.response.headers)\r",
+							"\r",
+							"code = pm.response.headers.get(\"Location\").split('&').pop().substring(5);\r",
+							"pm.environment.set(\"public_guest_auth_code\", code);\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"function generateCodeVerifier() {\r",
+							"    return generateRandomString(96);\r",
+							"}\r",
+							"\r",
+							"function generateRandomString(length) {\r",
+							"    var text = \"\";\r",
+							"    var possible = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\";\r",
+							"    for (var i = 0; i < length; i++) {\r",
+							"        text += possible.charAt(Math.floor(Math.random() * possible.length));\r",
+							"    }\r",
+							"    return text;\r",
+							"}\r",
+							"\r",
+							"function generateCodeChallenge(code_verifier) {\r",
+							"    return CryptoJS.SHA256(code_verifier);\r",
+							"}\r",
+							"\r",
+							"function base64URL(string) {\r",
+							"    return string.toString(CryptoJS.enc.Base64).replace(/=/g, '').replace(/\\+/g, '-').replace(/\\//g, '_')\r",
+							"}\r",
+							"\r",
+							"var verifier = base64URL(generateCodeVerifier());\r",
+							"var challenge = base64URL(generateCodeChallenge(verifier));\r",
+							"\r",
+							"pm.collectionVariables.set(\"PUBLIC_GUEST_CODE_VERIFIER\", verifier);\r",
+							"pm.collectionVariables.set(\"PUBLIC_GUEST_CODE_CHALLENGE\", challenge);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://{{shortCode}}.api.commercecloud.salesforce.com/shopper/auth/v1/organizations/{{organizationId}}/oauth2/authorize?client_id={{public_client_id}}&redirect_uri={{redirect_uri}}&hint=guest&response_type=code&code_challenge={{PUBLIC_GUEST_CODE_CHALLENGE}}&channel_id={{siteId}}",
+					"protocol": "https",
+					"host": [
+						"{{shortCode}}",
+						"api",
+						"commercecloud",
+						"salesforce",
+						"com"
+					],
+					"path": [
+						"shopper",
+						"auth",
+						"v1",
+						"organizations",
+						"{{organizationId}}",
+						"oauth2",
+						"authorize"
+					],
+					"query": [
+						{
+							"key": "client_id",
+							"value": "{{public_client_id}}"
+						},
+						{
+							"key": "redirect_uri",
+							"value": "{{redirect_uri}}"
+						},
+						{
+							"key": "hint",
+							"value": "guest"
+						},
+						{
+							"key": "response_type",
+							"value": "code"
+						},
+						{
+							"key": "code_challenge",
+							"value": "{{PUBLIC_GUEST_CODE_CHALLENGE}}"
+						},
+						{
+							"key": "channel_id",
+							"value": "{{siteId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "1b. SLAS Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const context = pm.environment.name ? pm.environment : pm.collectionVariables;\r",
+							"\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"var jsonBody= pm.response.json();\r",
+							"pm.environment.set(\"public_guest_user_access_token\", jsonBody.access_token);\r",
+							"pm.globals.set(\"slasCustAuthToken\", \"Bearer \" + jsonBody.access_token);\r",
+							"pm.globals.set(\"slasTokenOnly\", jsonBody.access_token);\r",
+							"pm.globals.set(\"slasUsid\", jsonBody.usid);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "code",
+							"value": "{{public_guest_auth_code}}",
+							"type": "text"
+						},
+						{
+							"key": "grant_type",
+							"value": "authorization_code_pkce",
+							"type": "text"
+						},
+						{
+							"key": "redirect_uri",
+							"value": "{{redirect_uri}}",
+							"type": "text"
+						},
+						{
+							"key": "code_verifier",
+							"value": "{{PUBLIC_GUEST_CODE_VERIFIER}}",
+							"type": "text"
+						},
+						{
+							"key": "channel_id",
+							"value": "{{siteId}}",
+							"type": "text"
+						},
+						{
+							"key": "client_id",
+							"value": "{{public_client_id}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{shortCode}}.api.commercecloud.salesforce.com/shopper/auth/v1/organizations/{{organizationId}}/oauth2/token",
+					"protocol": "https",
+					"host": [
+						"{{shortCode}}",
+						"api",
+						"commercecloud",
+						"salesforce",
+						"com"
+					],
+					"path": [
+						"shopper",
+						"auth",
+						"v1",
+						"organizations",
+						"{{organizationId}}",
+						"oauth2",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2a. Create ShopperContext",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{slasCustAuthToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"customQualifiers\": {\n        \"deviceType\": \"mobile\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{shortCode}}.api.commercecloud.salesforce.com/shopper/shopper-context/v1/organizations/{{organizationId}}/shopper-context/{{slasUsid}}?siteId={{siteId}}",
+					"protocol": "https",
+					"host": [
+						"{{shortCode}}",
+						"api",
+						"commercecloud",
+						"salesforce",
+						"com"
+					],
+					"path": [
+						"shopper",
+						"shopper-context",
+						"v1",
+						"organizations",
+						"{{organizationId}}",
+						"shopper-context",
+						"{{slasUsid}}"
+					],
+					"query": [
+						{
+							"key": "siteId",
+							"value": "{{siteId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2b. Get ShopperContext",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{slasCustAuthToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://{{shortCode}}.api.commercecloud.salesforce.com/shopper/shopper-context/v1/organizations/{{organizationId}}/shopper-context/{{slasUsid}}",
+					"protocol": "https",
+					"host": [
+						"{{shortCode}}",
+						"api",
+						"commercecloud",
+						"salesforce",
+						"com"
+					],
+					"path": [
+						"shopper",
+						"shopper-context",
+						"v1",
+						"organizations",
+						"{{organizationId}}",
+						"shopper-context",
+						"{{slasUsid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2c. Update ShopperContext",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{slasCustAuthToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"customQualifiers\": {\n        \"deviceType\": \"desktop\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{shortCode}}.api.commercecloud.salesforce.com/shopper/shopper-context/v1/organizations/{{organizationId}}/shopper-context/{{slasUsid}}?siteId={{siteId}}",
+					"protocol": "https",
+					"host": [
+						"{{shortCode}}",
+						"api",
+						"commercecloud",
+						"salesforce",
+						"com"
+					],
+					"path": [
+						"shopper",
+						"shopper-context",
+						"v1",
+						"organizations",
+						"{{organizationId}}",
+						"shopper-context",
+						"{{slasUsid}}"
+					],
+					"query": [
+						{
+							"key": "siteId",
+							"value": "{{siteId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2d. Delete ShopperContext",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{slasCustAuthToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://{{shortCode}}.api.commercecloud.salesforce.com/shopper/shopper-context/v1/organizations/{{organizationId}}/shopper-context/{{slasUsid}}",
+					"protocol": "https",
+					"host": [
+						"{{shortCode}}",
+						"api",
+						"commercecloud",
+						"salesforce",
+						"com"
+					],
+					"path": [
+						"shopper",
+						"shopper-context",
+						"v1",
+						"organizations",
+						"{{organizationId}}",
+						"shopper-context",
+						"{{slasUsid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "1c. Product Details",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{slasCustAuthToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://{{shortCode}}.api.commercecloud.salesforce.com/product/shopper-products/v1/organizations/{{organizationId}}/products?ids={{productId}}&siteId={{siteId}}&locale={{locale}}",
+					"protocol": "https",
+					"host": [
+						"{{shortCode}}",
+						"api",
+						"commercecloud",
+						"salesforce",
+						"com"
+					],
+					"path": [
+						"product",
+						"shopper-products",
+						"v1",
+						"organizations",
+						"{{organizationId}}",
+						"products"
+					],
+					"query": [
+						{
+							"key": "ids",
+							"value": "{{productId}}"
+						},
+						{
+							"key": "siteId",
+							"value": "{{siteId}}"
+						},
+						{
+							"key": "locale",
+							"value": "{{locale}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "PUBLIC_GUEST_CODE_VERIFIER",
+			"value": ""
+		},
+		{
+			"key": "PUBLIC_GUEST_CODE_CHALLENGE",
+			"value": ""
+		}
+	]
+}
