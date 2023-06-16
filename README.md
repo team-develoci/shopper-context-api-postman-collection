@@ -32,7 +32,7 @@ Once you have set the environment variables, you can start using the pre-configu
 
 ## How to use this Collection
 
-[Watch here](#) a full explanation about how to set and use this Postman Collection.
+[Watch here](https://www.youtube.com/watch?v=aB9ZONBI3So) a full explanation about how to set and use this Postman Collection.
 
 ## Useful Links
 
